@@ -1,0 +1,8 @@
+# Keep code, settings and the database out of reach of the browser
+Options -Indexes
+<FilesMatch "^(config\.php|config\.sample\.php|README\.md)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>
+RedirectMatch 404 ^/?(.*/)?(includes|data)(/|$)

@@ -1,0 +1,10 @@
+# Secrets and data stay on the server only
+config.php
+data/*
+!data/.htaccess
+!data/index.php
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+# Build output
+*.zip
