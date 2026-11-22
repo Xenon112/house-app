@@ -32,8 +32,7 @@ PHP 8.1+ with `pdo_sqlite`, `openssl`, `curl` (all standard on Plesk). No databa
 2. Get the files into its `httpdocs`, either:
    - **Plesk Git (recommended, same as the website):** Websites & Domains → the subdomain → Git →
      remote repository `https://github.com/Xenon112/house-app.git`, branch `main`, deploy to `httpdocs`.
-     The repo is private, so use an SSH deploy key (Plesk shows the key; add it on GitHub → repo Settings → Deploy keys, read-only)
-     and the address `git@github.com:Xenon112/house-app.git`. Every push to `main` then updates the site.
+     The repo is public, so no deploy key is needed. Turn on automatic deployment so every push to `main` updates the site.
    - or upload the files by hand.
    `config.php` and `data/` are not in git — they live only on the server, so deploys never overwrite them.
 3. Copy `config.sample.php` to `config.php` and change:
