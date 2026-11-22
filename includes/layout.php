@@ -1,7 +1,7 @@
 <?php
 // Page frame: sidebar on wide screens (tablet landscape, computer), big bottom tab bar on phones / tablet portrait.
 
-const HS_BUILD = '20261122c';
+const HS_BUILD = '20261122e';
 
 function hs_head(string $title): void {
     $app = e(hs_config()['app_name'] ?? 'Our House');
@@ -34,6 +34,7 @@ function hs_header(string $title, string $active = '', array $opts = []): void {
         'chores'  => ['Chores', 'chores.php', 'chores'],
         'food'    => ['Food', 'food.php', 'food'],
         'recipes' => ['Recipes', 'recipes.php', 'recipes'],
+        'scores'  => ['Scores', 'scores.php', 'trophy'],
         'alerts'  => ['Alerts', 'alerts.php', 'bell'],
     ];
     echo '<body class="has-nav">';
@@ -69,7 +70,7 @@ function hs_footer(): void {
     $cur = basename($_SERVER['SCRIPT_NAME'] ?? '');
     $tabs = [
         ['index.php', 'Home', 'home', ['index.php']],
-        ['chores.php', 'Chores', 'chores', ['chores.php', 'chore_edit.php']],
+        ['chores.php', 'Chores', 'chores', ['chores.php', 'chore_edit.php', 'scores.php']],
         ['food.php', 'Food', 'food', ['food.php', 'item_edit.php']],
         ['recipes.php', 'Recipes', 'recipes', ['recipes.php', 'recipe.php', 'recipe_edit.php']],
         ['alerts.php', 'Alerts', 'bell', ['alerts.php']],

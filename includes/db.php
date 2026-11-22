@@ -23,7 +23,19 @@ function hs_db(): PDO {
 
 function hs_migrate(PDO $db): void {
     $v = (int)$db->query('PRAGMA user_version')->fetchColumn();
-    if ($v >= 1) return;
+    if ($v < 1) hs_migrate_v1($db);
+    if ($v < 2) {
+        // Monthly chore champion
+        $db->exec('CREATE TABLE IF NOT EXISTS awards (
+            month TEXT NOT NULL,            -- YYYY-MM
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            chores INTEGER NOT NULL,
+            PRIMARY KEY (month, user_id)
+        ); PRAGMA user_version = 2;');
+    }
+}
+
+function hs_migrate_v1(PDO $db): void {
     $db->exec(<<<SQL
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -16,7 +16,12 @@ switch ($a) {
         $c2 = hs_chore($id);
         $msg = $c2['active'] ? 'Done! Next ' . hs_due_phrase($c2['due_date']) : 'Done!';
         if ($c2['active'] && $c['rotate'] && $c2['assigned_to']) $msg .= ' · ' . (hs_members()[(int)$c2['assigned_to']]['name'] ?? '') . "'s turn";
+        if ($c['assigned_to'] !== null && (int)$c['assigned_to'] !== hs_uid()) $msg = 'Thanks for doing ' . (hs_members()[(int)$c['assigned_to']]['name'] ?? '') . '\'s chore! ' . $msg;
         hs_json(['ok' => true, 'log' => $log, 'msg' => $msg]);
+
+    case 'chore_take':
+        if (!hs_chore_take($id, hs_uid())) hs_json(['error' => 'It is already yours.'], 409);
+        hs_json(['ok' => true, 'msg' => 'It\'s yours now — thanks!']);
 
     case 'chore_undo':
         hs_json(['ok' => hs_chore_undo($id)]);
@@ -32,6 +37,7 @@ switch ($a) {
         $before = hs_item($id);
         $i = hs_item_restock($id);
         if (!$i) hs_json(['error' => 'Not found'], 404);
+        hs_notify_everyone('done', hs_user()['name'] . ' bought ' . $i['name'], 'Now ' . hs_num($i['qty']) . ($i['unit'] ? ' ' . $i['unit'] : '') . ' in stock — no need to buy it.', 'food.php');
         hs_json(['ok' => true, 'msg' => 'Bought ' . $i['name'] . ' — now ' . hs_num($i['qty']) . ($i['unit'] ? ' ' . $i['unit'] : ''),
                  'undo' => ['id' => $id, 'qty' => (float)$before['qty'], 'on_list' => (int)$before['on_list']]]);
 

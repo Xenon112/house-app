@@ -76,6 +76,22 @@
     }
   });
 
+  /* ---------- "I'll do it": take a chore over ---------- */
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('.take[data-take]');
+    if (!b || b.disabled) return;
+    b.disabled = true;
+    buzz();
+    try {
+      const j = await api('chore_take', { id: b.dataset.take });
+      showToast(j.msg);
+      setTimeout(() => location.reload(), 900);
+    } catch (err) {
+      b.disabled = false;
+      if (err.message !== 'login') showToast(err.message);
+    }
+  });
+
   /* ---------- Food +/− (instant, batched per tap) ---------- */
   document.addEventListener('click', async (e) => {
     const b = e.target.closest('.item-card .step');

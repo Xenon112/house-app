@@ -4,13 +4,24 @@ A small website for the whole household, built to be used on a touch-screen tabl
 Same look as the Refurbisch dashboard: warm brown → orange, Inter font, light + dark mode.
 
 - **Chores** — tick them off with one tap. Repeat (daily, weekly, every N days…), give them to a person,
-  or let people **take turns**. Undo if you tick by mistake.
+  or let people **take turns**. Undo if you tick by mistake. Anyone can tap **"I'll do it"** to take a chore,
+  or simply tick someone else's chore when they did it for them — the person who ticks gets the credit.
+- **Scores** — who did the most chores this month. On the 1st the winner of last month gets the 🏆 award,
+  everyone gets the summary, and the Hall of fame keeps count.
 - **Food** — big − / + buttons for what's in stock. At or below the alert amount it goes on the
   **shopping list**; tick "bought" and the stock jumps back to the normal amount.
-- **Recipes** — ingredients linked to your food show "in stock / missing". Tick ingredients and
-  steps while cooking. "I cooked this" takes the ingredients out of stock; "Add missing" fills the shopping list.
-- **Phone alerts** — new chore given to you, your turn, daily reminder for due/overdue chores, food running low.
-  Everyone chooses which alerts they want (Settings).
+- **Recipes** — everyone can add them. Ingredients are linked to your food (pick the name from the list),
+  so each recipe shows **Ready to cook** or **Missing …** (and what will run low). "I cooked this" takes the
+  ingredients out of stock (kg ↔ g and l ↔ ml are converted); "Add to shopping list" adds what's missing.
+- **Alerts on phone and Telegram** — chore given to you / your turn, daily reminder, who did what (chores done,
+  food bought, cooked), food running low, new recipes, monthly champion. Everyone chooses which ones they want.
+
+## Telegram (optional)
+1. Admin: in Telegram open **@BotFather**, send `/newbot`, pick a name → copy the token →
+   app **Settings → Telegram** → paste → *Connect bot*. (One bot for the whole house.)
+2. Each person: **Settings → Telegram → "1. Open Telegram and press Start"**, then **"2. Done — connect me"**.
+   Their alerts now also arrive in Telegram (same on/off choices as phone alerts).
+   No webhook is used, so don't connect this bot to anything else.
 
 ## Requirements
 PHP 8.1+ with `pdo_sqlite`, `openssl`, `curl` (all standard on Plesk). No database server, no extra libraries.

@@ -9,7 +9,7 @@ $dueMine = array_values(array_filter($mine, fn($c) => $c['due_date'] === null ||
 $allOpen = hs_chores_open();
 $dueAll = count(array_filter($allOpen, fn($c) => $c['due_date'] !== null && $c['due_date'] <= $today));
 $shop = hs_shopping_list();
-$recipes = (int)hs_db()->query('SELECT COUNT(*) FROM recipes')->fetchColumn();
+$cookable = hs_recipes_cookable();
 $doneToday = hs_chores_recent_done($uid);
 
 $h = (int)date('G');
@@ -28,9 +28,9 @@ hs_header('Home', 'home');
     <span class="ico-wrap"><?= hs_icon('cart', 24) ?></span>
     <span class="big"><?= count($shop) ?></span><span class="lab">to buy</span>
   </a>
-  <a class="tile" href="recipes.php">
+  <a class="tile" href="recipes.php?show=can">
     <span class="ico-wrap"><?= hs_icon('recipes', 24) ?></span>
-    <span class="big"><?= $recipes ?></span><span class="lab">recipes</span>
+    <span class="big"><?= $cookable ?></span><span class="lab">can cook now</span>
   </a>
 </div>
 
@@ -54,6 +54,19 @@ hs_header('Home', 'home');
     </div>
     <?php if (!$shop): ?><div class="empty">Nothing is running low.</div><?php endif; ?>
     <?php if (count($shop) > 8): ?><p><a href="food.php?view=list">See all <?= count($shop) ?> →</a></p><?php endif; ?>
+
+    <?php $counts = hs_month_counts(date('Y-m')); $best = max($counts ?: [0]); ?>
+    <h2><?= hs_icon('trophy', 22) ?> <?= e(date('F')) ?> scores</h2>
+    <a class="panel" href="scores.php" style="display:block;color:inherit">
+      <?php foreach (array_slice($counts, 0, 4, true) as $mid => $n): ?>
+        <div class="score-row<?= $n > 0 && $n === $best ? ' top' : '' ?>">
+          <?= hs_avatar($mid, 'sm') ?>
+          <div class="grow"><b><?= e(hs_members()[$mid]['name']) ?></b>
+            <div class="score-bar"><i style="width:<?= $best ? round($n / $best * 100) : 0 ?>%;--c:<?= e(hs_members()[$mid]['color']) ?>"></i></div></div>
+          <span class="score-n" style="font-size:1.25rem"><?= $n > 0 && $n === $best ? '🏆 ' : '' ?><?= $n ?></span>
+        </div>
+      <?php endforeach; ?>
+    </a>
   </section>
 </div>
 <?php hs_footer();

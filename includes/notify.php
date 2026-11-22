@@ -1,16 +1,19 @@
 <?php
 /**
- * Alerts: an in-app list (bell) + phone notifications (web push).
+ * Alerts: an in-app list (bell) + phone notifications (web push) + Telegram (includes/telegram.php).
  *
- * Same approach as the Refurbisch dashboard: the push carries no content, it only wakes the
+ * Web push works like the Refurbisch dashboard: the push carries no content, it only wakes the
  * service worker (sw.js), which asks push.php?action=next for this device's next alert and shows it.
  * So only a VAPID signature (ES256) is needed, no message encryption and no extra libraries.
  */
 
 const HS_ALERT_KINDS = [
-    'assign' => 'A chore is given to me',
-    'due'    => 'My chores are due (daily reminder)',
-    'low'    => 'Food is running low',
+    'assign'  => 'A chore is given to me or it is my turn',
+    'due'     => 'My chores are due (daily reminder)',
+    'done'    => 'Someone finishes a chore or buys food',
+    'low'     => 'Food is running low',
+    'recipe'  => 'Someone adds a new recipe',
+    'summary' => 'Monthly chore champion',
 ];
 
 function hs_alert_on(int $uid, string $kind): bool {
@@ -18,7 +21,8 @@ function hs_alert_on(int $uid, string $kind): bool {
 }
 
 /**
- * Create an alert for these people. Push is sent after the page has been delivered.
+ * Create an alert for these people. Phone push and Telegram are sent after the page has been delivered,
+ * only for the kinds each person has turned on.
  * $skipSelf: don't alert the person who did the action.
  */
 function hs_notify(array $userIds, string $kind, string $title, string $body = '', string $url = 'index.php', bool $skipSelf = true): void {
@@ -27,9 +31,9 @@ function hs_notify(array $userIds, string $kind, string $title, string $body = '
     $ins = $db->prepare('INSERT INTO notifications (user_id, kind, title, body, url, push) VALUES (?,?,?,?,?,?)');
     foreach (array_unique(array_map('intval', $userIds)) as $uid) {
         if ($uid < 1 || ($skipSelf && $uid === $me)) continue;
-        $push = hs_alert_on($uid, $kind) ? 1 : 0;
-        $ins->execute([$uid, $kind, $title, $body, $url, $push]);
-        if ($push) hs_push_queue($uid);
+        $send = hs_alert_on($uid, $kind) ? 1 : 0;
+        $ins->execute([$uid, $kind, $title, $body, $url, $send]);
+        if ($send) hs_outbox(['uid' => $uid, 'kind' => $kind, 'title' => $title, 'body' => $body, 'url' => $url]);
     }
 }
 
@@ -43,22 +47,22 @@ function hs_unread_count(int $uid): int {
     return (int)$st->fetchColumn();
 }
 
-/* ---------- Push queue: sent at the end of the request so ticking stays instant ---------- */
-function hs_push_queue(?int $uid = null): void {
+/* ---------- Outbox: sent at the end of the request so ticking stays instant ---------- */
+function hs_outbox(array $msg): void {
     static $queue = [];
     static $registered = false;
-    if ($uid !== null) {
-        $queue[$uid] = true;
-        if (!$registered) {
-            $registered = true;
-            register_shutdown_function(function () use (&$queue) {
-                if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request();
-                foreach (array_keys($queue) as $u) {
-                    try { hs_push_user(hs_db(), (int)$u); } catch (Throwable $e) {}
-                }
-            });
+    $queue[] = $msg;
+    if ($registered) return;
+    $registered = true;
+    register_shutdown_function(function () use (&$queue) {
+        if (function_exists('fastcgi_finish_request')) @fastcgi_finish_request();
+        foreach ($queue as $m) {
+            $u = (int)$m["uid"];
+            // One wake-up per alert: each time the phone fetches the next alert it has not shown yet
+            try { hs_push_user(hs_db(), $u); } catch (Throwable $e) {}
+            try { hs_tg_send_alert($u, $m['kind'], $m['title'], $m['body'], $m['url']); } catch (Throwable $e) {}
         }
-    }
+    });
 }
 
 /* ---------- Web push (VAPID) ---------- */
@@ -169,6 +173,7 @@ function hs_run_due_checks(bool $force = false): int {
     if (!$force && time() - $last < 300) return 0;
     hs_set_setting('due_check_at', (string)time());
     if ((int)date('G') < (int)(hs_config()['reminder_hour'] ?? 8)) return 0;
+    try { hs_award_check(); } catch (Throwable $e) {}   // monthly champion, once on the 1st
 
     $db = hs_db();
     $today = hs_today();

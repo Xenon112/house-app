@@ -47,6 +47,7 @@ if (hs_is_post()) {
             $ins->execute([$id, hs_find_item_by_name($n), mb_substr($n, 0, 80), $amt === '' ? null : (float)$amt, mb_substr($unit, 0, 20), $k]);
         }
         $db->commit();
+        if (!$r) hs_notify_everyone('recipe', $u['name'] . ' added a recipe: ' . $title, 'Have a look — maybe tonight?', 'recipe.php?id=' . $id);
         hs_flash('Recipe saved.');
         hs_redirect('recipe.php?id=' . $id);
     }

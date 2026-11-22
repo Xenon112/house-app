@@ -60,11 +60,33 @@ function hs_chore_done(int $id, int $uid): int {
            ->execute([$next, $newAssignee, $id]);
     }
     $db->commit();
+    // Tell the house who did what. The person whose chore it was hears that someone did it for them.
+    $doer = hs_members()[$uid]['name'] ?? 'Someone';
+    $owner = $c['assigned_to'] !== null ? (int)$c['assigned_to'] : 0;
+    $others = array_diff(array_keys(hs_members()), [$uid, $owner]);
+    if ($owner && $owner !== $uid) {
+        hs_notify([$owner], 'done', $doer . ' did your chore: ' . $c['title'], 'You can skip this one. Say thanks!', 'chores.php');
+    }
+    hs_notify($others, 'done', $doer . ' did: ' . $c['title'],
+        $owner && $owner !== $uid ? 'It was ' . (hs_members()[$owner]['name'] ?? '?') . "'s chore." : '', 'chores.php');
+
     if ($c['rotate'] && $newAssignee && $newAssignee !== (int)$c['assigned_to']) {
         $c2 = hs_chore($id);
         hs_notify([$newAssignee], 'assign', 'Your turn: ' . $c['title'], 'Due ' . hs_due_phrase($c2['due_date']) . '.', 'chores.php?who=me');
     }
     return $logId;
+}
+
+/** "I'll do it": take a chore over (from someone else or from "anyone"). */
+function hs_chore_take(int $id, int $uid): bool {
+    $c = hs_chore($id);
+    if (!$c || !$c['active'] || (int)$c['assigned_to'] === $uid) return false;
+    hs_db()->prepare('UPDATE chores SET assigned_to = ? WHERE id = ?')->execute([$uid, $id]);
+    $me = hs_members()[$uid]['name'] ?? 'Someone';
+    if ($c['assigned_to'] !== null) {
+        hs_notify([(int)$c['assigned_to']], 'assign', $me . ' took over: ' . $c['title'], 'You don\'t need to do this one.', 'chores.php');
+    }
+    return true;
 }
 
 /** Undo a tick (within a day): the chore goes back to how it was. */
@@ -132,12 +154,17 @@ function hs_chore_row(array $c, bool $done = false): string {
     $tickAttr = $done
         ? 'data-undo="' . (int)$c['log_id'] . '" aria-label="Undo: ' . e($c['title']) . '"'
         : 'data-done="' . (int)$c['id'] . '" aria-label="Done: ' . e($c['title']) . '"';
+    // Not mine yet: "I'll do it" takes it over (you can also just tick it — you get the credit)
+    $take = (!$done && $who !== hs_uid())
+        ? '<button type="button" class="take" data-take="' . (int)$c['id'] . '" aria-label="I\'ll do ' . e($c['title']) . '">' . hs_icon('hand', 18) . '<span>I\'ll do it</span></button>'
+        : '';
     return '<div class="tick-row' . ($done ? ' is-done' : '') . ($state ? ' ' . $state : '') . '">'
         . '<button type="button" class="tick" ' . $tickAttr . '>' . hs_icon('check', 30) . '</button>'
         . '<a class="tick-body" href="chore_edit.php?id=' . (int)$c['id'] . '">'
         . '<span class="tick-title">' . e($c['title']) . '</span>'
         . '<span class="tick-meta">' . implode('<i>·</i>', $meta) . '</span>'
         . '</a>'
+        . $take
         . hs_avatar($who)
         . '</div>';
 }

@@ -23,6 +23,7 @@ hs_header('Chores', 'chores', ['actions' => '<a class="btn" href="chore_edit.php
     <a href="?who=all" class="<?= $who === 'all' ? 'active' : '' ?>"><?= hs_icon('users', 20) ?> Everyone</a>
     <a href="?who=me" class="<?= $who === 'me' ? 'active' : '' ?>"><?= hs_avatar((int)$u['id'], 'sm') ?> Mine</a>
   </div>
+  <a class="btn secondary" href="scores.php"><?= hs_icon('trophy', 20) ?> Scores</a>
 </div>
 
 <?php $any = false;

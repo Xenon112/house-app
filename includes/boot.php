@@ -21,8 +21,10 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/icons.php';
 require_once __DIR__ . '/notify.php';
+require_once __DIR__ . '/telegram.php';
 require_once __DIR__ . '/chores.php';
 require_once __DIR__ . '/food.php';
+require_once __DIR__ . '/scores.php';
 require_once __DIR__ . '/layout.php';
 
 // Session before any output (the CSRF token lives in it)

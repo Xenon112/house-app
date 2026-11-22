@@ -60,19 +60,63 @@ function hs_find_item_by_name(string $name): ?int {
     return $id ? (int)$id : null;
 }
 
-/** Ingredients of a recipe with stock info. */
+/** Recipe amount in the stock's unit (kg ↔ g, l ↔ ml). Unknown pairs are taken as they are. */
+function hs_convert(float $amount, string $from, string $to): float {
+    $f = ['g' => ['g', 1], 'kg' => ['g', 1000], 'ml' => ['ml', 1], 'l' => ['ml', 1000], 'cl' => ['ml', 10], 'dl' => ['ml', 100]];
+    $from = mb_strtolower(trim($from));
+    $to = mb_strtolower(trim($to));
+    if ($from === $to || !isset($f[$from], $f[$to]) || $f[$from][0] !== $f[$to][0]) return $amount;
+    return $amount * $f[$from][1] / $f[$to][1];
+}
+
+/**
+ * Ingredients of a recipe with stock info:
+ *   have      null = not linked to stock, true = enough, false = missing / not enough
+ *   need      amount in the stock's unit
+ *   low_after true when cooking would put the food at or below its alert amount
+ */
 function hs_recipe_ingredients(int $rid): array {
-    $st = hs_db()->prepare('SELECT ri.*, i.qty AS stock, i.unit AS stock_unit, i.name AS item_name
+    $st = hs_db()->prepare('SELECT ri.*, i.qty AS stock, i.unit AS stock_unit, i.min_qty AS stock_min, i.name AS item_name
                             FROM recipe_ingredients ri LEFT JOIN items i ON i.id = ri.item_id
                             WHERE ri.recipe_id = ? ORDER BY ri.sort, ri.id');
     $st->execute([$rid]);
     $out = [];
     foreach ($st->fetchAll() as $r) {
-        if ($r['item_id'] === null || $r['stock'] === null) $r['have'] = null;           // not tracked in stock
-        else $r['have'] = (float)$r['stock'] >= (float)($r['amount'] ?: 0.0001);
+        $r['need'] = $r['amount'] !== null ? hs_convert((float)$r['amount'], (string)$r['unit'], (string)$r['stock_unit']) : 0.0;
+        $r['low_after'] = false;
+        if ($r['item_id'] === null || $r['stock'] === null) {
+            $r['have'] = null;
+        } else {
+            $r['have'] = (float)$r['stock'] > 0 && (float)$r['stock'] >= $r['need'];
+            $r['low_after'] = $r['have'] && ((float)$r['stock'] - $r['need']) <= (float)$r['stock_min'];
+        }
         $out[] = $r;
     }
     return $out;
+}
+
+/** Can this recipe be cooked with what's in stock? */
+function hs_recipe_status(int $rid): array {
+    $ings = hs_recipe_ingredients($rid);
+    $tracked = array_values(array_filter($ings, fn($x) => $x['have'] !== null));
+    $missing = array_values(array_filter($tracked, fn($x) => !$x['have']));
+    return [
+        'ings'     => $ings,
+        'tracked'  => count($tracked),
+        'have'     => count($tracked) - count($missing),
+        'missing'  => $missing,
+        'low'      => array_values(array_filter($tracked, fn($x) => $x['low_after'])),
+        'can'      => $tracked ? !$missing : null,   // null: no ingredient is linked to stock
+    ];
+}
+
+/** How many recipes can be cooked right now. */
+function hs_recipes_cookable(): int {
+    $n = 0;
+    foreach (hs_db()->query('SELECT id FROM recipes')->fetchAll(PDO::FETCH_COLUMN) as $rid) {
+        if (hs_recipe_status((int)$rid)['can'] === true) $n++;
+    }
+    return $n;
 }
 
 function hs_item_card(array $i): string {
